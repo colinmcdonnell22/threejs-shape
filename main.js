@@ -44,12 +44,9 @@ let logoLoadAttempted = false;
 // Function to check if logo file exists
 function checkLogoFile() {
   const testPaths = [
-    './s_logo.webp',
-    's_logo.webp',
-    '/s_logo.webp',
-    './S_logo.webp',
-    'S_logo.webp',
-    '/S_logo.webp'
+    './image-c53e352f-832a-44bc-96dc-a5810275be89.webp',
+    'image-c53e352f-832a-44bc-96dc-a5810275be89.webp',
+    '/image-c53e352f-832a-44bc-96dc-a5810275be89.webp'
   ];
   
   console.log('Testing logo file accessibility...');
@@ -172,12 +169,9 @@ function loadLogoWithFallback(paths, index = 0) {
 }
 
 const logoPaths = [
-  './s_logo.webp',
-  's_logo.webp',
-  '/s_logo.webp',
-  './S_logo.webp',
-  'S_logo.webp',
-  '/S_logo.webp'
+  './image-c53e352f-832a-44bc-96dc-a5810275be89.webp',
+  'image-c53e352f-832a-44bc-96dc-a5810275be89.webp',
+  '/image-c53e352f-832a-44bc-96dc-a5810275be89.webp'
 ];
 
 loadLogoWithFallback(logoPaths);
