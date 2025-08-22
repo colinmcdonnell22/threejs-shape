@@ -39,6 +39,26 @@ let toolbarAutoHideTimeout;
 // Logo setup
 let logoMesh;
 let logoTexture;
+let logoLoadAttempted = false;
+
+// Function to check if logo file exists
+function checkLogoFile() {
+  const img = new Image();
+  img.onload = function() {
+    console.log('Logo file check: File exists and is accessible');
+  };
+  img.onerror = function() {
+    console.error('Logo file check: File not accessible at ./s_logo.webp');
+    console.error('Current working directory info:', {
+      href: window.location.href,
+      pathname: window.location.pathname,
+      origin: window.location.origin,
+      protocol: window.location.protocol,
+      host: window.location.host
+    });
+  };
+  img.src = './s_logo.webp';
+}
 
 // GUI parameters
 const params = {
@@ -88,8 +108,9 @@ const mesh = new THREE.Mesh(geometry, shaderMaterial);
 scene.add(mesh);
 
 // Load logo texture and create logo mesh
+console.log('Starting logo texture loading...');
 const textureLoader = new THREE.TextureLoader();
-textureLoader.load('/s_logo.webp', function(texture) {
+textureLoader.load('./s_logo.webp', function(texture) {
   logoTexture = texture;
   logoTexture.flipY = true; // Fix texture orientation
   
@@ -100,7 +121,7 @@ textureLoader.load('/s_logo.webp', function(texture) {
   const logoMaterial = new THREE.ShaderMaterial({
     uniforms: {
       ...logoUniforms,
-      u_logoTexture: { value: logoTexture }
+      u_logoTexture: { value: texture }
     },
     vertexShader: document.getElementById('logoVertexShader').textContent,
     fragmentShader: document.getElementById('logoFragmentShader').textContent,
@@ -113,9 +134,45 @@ textureLoader.load('/s_logo.webp', function(texture) {
   logoMesh.position.set(0, 0, 0); // Center position
   scene.add(logoMesh);
   
-  console.log('Logo loaded and added to scene');
-}, undefined, function(error) {
+  logoLoadAttempted = true;
+  console.log('Logo loaded and added to scene successfully');
+}, function(progress) {
+  console.log('Logo loading progress:', (progress.loaded / progress.total * 100) + '%');
+}, function(error) {
+  logoLoadAttempted = true;
   console.error('Error loading logo texture:', error);
+  console.error('Logo file path attempted: ./s_logo.webp');
+  console.error('Current page URL:', window.location.href);
+  console.error('Current page pathname:', window.location.pathname);
+  
+  // Try alternative path as fallback
+  console.log('Attempting fallback logo path...');
+  textureLoader.load('s_logo.webp', function(fallbackTexture) {
+    logoTexture = fallbackTexture;
+    logoTexture.flipY = true;
+    
+    const logoGeometry = new THREE.PlaneGeometry(params.logoSize, params.logoSize);
+    const logoMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        ...logoUniforms,
+        u_logoTexture: { value: fallbackTexture }
+      },
+      vertexShader: document.getElementById('logoVertexShader').textContent,
+      fragmentShader: document.getElementById('logoFragmentShader').textContent,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    
+    logoMesh = new THREE.Mesh(logoGeometry, logoMaterial);
+    logoMesh.position.set(0, 0, 0);
+    scene.add(logoMesh);
+    
+    console.log('Logo loaded successfully with fallback path');
+  }, undefined, function(fallbackError) {
+    console.error('Fallback logo loading also failed:', fallbackError);
+    console.log('Logo will not be displayed');
+  });
 });
 
 
@@ -144,15 +201,15 @@ gui.close(); // Start with the GUI closed for cleaner interface
 const colorsFolder = gui.addFolder('Colors');
 colorsFolder.add(params, 'red', 0, 1, 0.01).onChange(function (value) {
   uniforms.u_red.value = Number(value);
-  if (logoMesh) logoMesh.material.uniforms.u_red.value = Number(value);
+  if (logoMesh && logoTexture) logoMesh.material.uniforms.u_red.value = Number(value);
 });
 colorsFolder.add(params, 'green', 0, 1, 0.01).onChange(function (value) {
   uniforms.u_green.value = Number(value);
-  if (logoMesh) logoMesh.material.uniforms.u_green.value = Number(value);
+  if (logoMesh && logoTexture) logoMesh.material.uniforms.u_green.value = Number(value);
 });
 colorsFolder.add(params, 'blue', 0, 1, 0.01).onChange(function (value) {
   uniforms.u_blue.value = Number(value);
-  if (logoMesh) logoMesh.material.uniforms.u_blue.value = Number(value);
+  if (logoMesh && logoTexture) logoMesh.material.uniforms.u_blue.value = Number(value);
 });
 
 const bloomFolder = gui.addFolder('Bloom');
@@ -173,12 +230,12 @@ audioFolder.add(params, 'sensitivity', 0.1, 5, 0.1).name('Mic Sensitivity');
 // Logo Controls
 const logoFolder = gui.addFolder('Logo');
 logoFolder.add(params, 'logoOpacity', 0, 1, 0.01).name('Logo Opacity').onChange(function(value) {
-  if (logoMesh) {
+  if (logoMesh && logoTexture) {
     logoMesh.material.uniforms.u_opacity.value = Number(value);
   }
 });
 logoFolder.add(params, 'logoSize', 0.5, 5, 0.1).name('Logo Size').onChange(function(value) {
-  if (logoMesh) {
+  if (logoMesh && logoTexture) {
     logoMesh.scale.setScalar(Number(value) / 2.5); // Use original size as base
   }
 });
@@ -509,7 +566,7 @@ function animate() {
   }
   
   // Update logo uniforms if logo exists
-  if (logoMesh) {
+  if (logoMesh && logoTexture) {
     logoMesh.material.uniforms.u_time.value = clock.getElapsedTime();
     logoMesh.material.uniforms.u_frequency.value = frequency;
     logoMesh.material.uniforms.u_red.value = uniforms.u_red.value;
@@ -557,6 +614,9 @@ window.addEventListener('resize', function() {
   renderer.setSize(width, height);
   bloomComposer.setSize(width, height);
 });
+
+// Check logo file accessibility
+checkLogoFile();
 
 // Start animation loop
 animate(); 
