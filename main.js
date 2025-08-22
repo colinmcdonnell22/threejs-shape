@@ -43,21 +43,37 @@ let logoLoadAttempted = false;
 
 // Function to check if logo file exists
 function checkLogoFile() {
-  const img = new Image();
-  img.onload = function() {
-    console.log('Logo file check: File exists and is accessible');
-  };
-  img.onerror = function() {
-    console.error('Logo file check: File not accessible at ./s_logo.webp');
-    console.error('Current working directory info:', {
-      href: window.location.href,
-      pathname: window.location.pathname,
-      origin: window.location.origin,
-      protocol: window.location.protocol,
-      host: window.location.host
-    });
-  };
-  img.src = './s_logo.webp';
+  const testPaths = [
+    './s_logo.webp',
+    's_logo.webp',
+    '/s_logo.webp',
+    './S_logo.webp',
+    'S_logo.webp',
+    '/S_logo.webp'
+  ];
+  
+  console.log('Testing logo file accessibility...');
+  
+  testPaths.forEach((path, index) => {
+    const img = new Image();
+    img.onload = function() {
+      console.log(`✅ Logo file accessible at: ${path}`);
+    };
+    img.onerror = function() {
+      console.log(`❌ Logo file not accessible at: ${path}`);
+      if (index === testPaths.length - 1) {
+        console.error('❌ All logo paths failed. Logo will not be displayed.');
+        console.error('Current working directory info:', {
+          href: window.location.href,
+          pathname: window.location.pathname,
+          origin: window.location.origin,
+          protocol: window.location.protocol,
+          host: window.location.host
+        });
+      }
+    };
+    img.src = path;
+  });
 }
 
 // GUI parameters
@@ -109,71 +125,62 @@ scene.add(mesh);
 
 // Load logo texture and create logo mesh
 console.log('Starting logo texture loading...');
-const textureLoader = new THREE.TextureLoader();
-textureLoader.load('./s_logo.webp', function(texture) {
-  logoTexture = texture;
-  logoTexture.flipY = true; // Fix texture orientation
+
+function loadLogoWithFallback(paths, index = 0) {
+  if (index >= paths.length) {
+    console.error('❌ All logo loading attempts failed. Logo will not be displayed.');
+    logoLoadAttempted = true;
+    return;
+  }
   
-  // Create logo geometry (plane)
-  const logoGeometry = new THREE.PlaneGeometry(params.logoSize, params.logoSize);
+  const currentPath = paths[index];
+  console.log(`🔄 Attempting to load logo from: ${currentPath}`);
   
-  // Create logo material with custom shader
-  const logoMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      ...logoUniforms,
-      u_logoTexture: { value: texture }
-    },
-    vertexShader: document.getElementById('logoVertexShader').textContent,
-    fragmentShader: document.getElementById('logoFragmentShader').textContent,
-    transparent: true,
-    blending: THREE.AdditiveBlending, // Additive blending for better integration
-    depthWrite: false,
-  });
-  
-  logoMesh = new THREE.Mesh(logoGeometry, logoMaterial);
-  logoMesh.position.set(0, 0, 0); // Center position
-  scene.add(logoMesh);
-  
-  logoLoadAttempted = true;
-  console.log('Logo loaded and added to scene successfully');
-}, function(progress) {
-  console.log('Logo loading progress:', (progress.loaded / progress.total * 100) + '%');
-}, function(error) {
-  logoLoadAttempted = true;
-  console.error('Error loading logo texture:', error);
-  console.error('Logo file path attempted: ./s_logo.webp');
-  console.error('Current page URL:', window.location.href);
-  console.error('Current page pathname:', window.location.pathname);
-  
-  // Try alternative path as fallback
-  console.log('Attempting fallback logo path...');
-  textureLoader.load('s_logo.webp', function(fallbackTexture) {
-    logoTexture = fallbackTexture;
-    logoTexture.flipY = true;
+  textureLoader.load(currentPath, function(texture) {
+    logoTexture = texture;
+    logoTexture.flipY = true; // Fix texture orientation
     
+    // Create logo geometry (plane)
     const logoGeometry = new THREE.PlaneGeometry(params.logoSize, params.logoSize);
+    
+    // Create logo material with custom shader
     const logoMaterial = new THREE.ShaderMaterial({
       uniforms: {
         ...logoUniforms,
-        u_logoTexture: { value: fallbackTexture }
+        u_logoTexture: { value: texture }
       },
       vertexShader: document.getElementById('logoVertexShader').textContent,
       fragmentShader: document.getElementById('logoFragmentShader').textContent,
       transparent: true,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.AdditiveBlending, // Additive blending for better integration
       depthWrite: false,
     });
     
     logoMesh = new THREE.Mesh(logoGeometry, logoMaterial);
-    logoMesh.position.set(0, 0, 0);
+    logoMesh.position.set(0, 0, 0); // Center position
     scene.add(logoMesh);
     
-    console.log('Logo loaded successfully with fallback path');
-  }, undefined, function(fallbackError) {
-    console.error('Fallback logo loading also failed:', fallbackError);
-    console.log('Logo will not be displayed');
+    logoLoadAttempted = true;
+    console.log(`✅ Logo loaded successfully from: ${currentPath}`);
+  }, function(progress) {
+    console.log(`📊 Logo loading progress from ${currentPath}:`, (progress.loaded / progress.total * 100) + '%');
+  }, function(error) {
+    console.error(`❌ Failed to load logo from ${currentPath}:`, error);
+    // Try next path
+    loadLogoWithFallback(paths, index + 1);
   });
-});
+}
+
+const logoPaths = [
+  './s_logo.webp',
+  's_logo.webp',
+  '/s_logo.webp',
+  './S_logo.webp',
+  'S_logo.webp',
+  '/S_logo.webp'
+];
+
+loadLogoWithFallback(logoPaths);
 
 
 
